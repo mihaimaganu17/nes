@@ -349,16 +349,50 @@ uint8_t Cpu6502::CLV()
 
 uint8_t Cpu6502::ADC()
 {
-
+    // Fetch data
+    fetch();
+    uint16_t temp = (uint16_t)acc + (uint16_t)fetched + (uint16_t)GetFlag(C);
+    SetFlag(C, temp > 255);
+    SetFlag(N, temp & 0x80);  // Most significant bit is set, means it is a negative value
+    SetFlag(V, (~((uint16_t)acc ^ (uint16_t)fetched) & ((uint16_t)acc ^ (uint16_t)temp)) & 0x0080);
+    // Store the result in the accumulator
+    acc &= 0x00FF;
+    return 1;
 }
 
+// TODO: Look in depth at this shit
 uint8_t Cpu6502::SBC()
 {
+    // Acc = acc - data_fetched + 1 + C
+    // - x = inverted bits of x + 1
+    fetch();
+    uint16_t value = (uint16_t)fetched ^ 0x00FF;
 
+    uint16_t temp = (uint16_t)acc + value + (uint16_t)GetFlag(C);
+    SetFlag(C, temp > 255);
+    SetFlag(N, temp & 0x80);
+    SetFlag(V, (((uint16_t)acc ^ value) & (value & temp)) & 0x0080);
+    a = temp & 0x00FF;
 }
 
+// Push accumulator to stack pointer
+uint8_t Cpu6502::PHA()
+{
+    // Base address for the stack is the value 0x0100
+    write(0x0100 + sp, acc);
+    sp--;
+    return 0;
+}
 
-
+// Pop/pull pointer from the stack
+uint8_t Cpu6502::PLA()
+{
+    sp++;
+    acc = read(0x100 + sp);
+    SetFlag(Z, a == 0x00);
+    SetFlag(N, a & 0x80);
+    return 0;
+}
 
 
 
